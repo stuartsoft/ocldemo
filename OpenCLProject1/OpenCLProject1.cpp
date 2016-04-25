@@ -528,17 +528,17 @@ int SetupOpenCL(ocl_args_d_t *ocl, cl_device_type deviceType)
 #ifdef CL_VERSION_2_0
     if (OPENCL_VERSION_2_0 == ocl->deviceVersion)
     {
-        const cl_command_queue_properties properties[] = {CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0};
+        const cl_command_queue_properties properties[] = {CL_QUEUE_PROPERTIES, 0, 0};
         ocl->commandQueue = clCreateCommandQueueWithProperties(ocl->context, ocl->device, properties, &err);
     } 
     else {
         // default behavior: OpenCL 1.2
-        cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
+        cl_command_queue_properties properties = 0;
         ocl->commandQueue = clCreateCommandQueue(ocl->context, ocl->device, properties, &err);
     } 
 #else
     // default behavior: OpenCL 1.2
-    cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
+    cl_command_queue_properties properties = 0;
     ocl->commandQueue = clCreateCommandQueue(ocl->context, ocl->device, properties, &err);
 #endif
     if (CL_SUCCESS != err)
@@ -628,14 +628,14 @@ int CreateBufferArguments(ocl_args_d_t *ocl, cl_int* inputA, cl_int* inputB, cl_
     // to better organize data copying.
     // You use CL_MEM_COPY_HOST_PTR here, because the buffers should be populated with bytes at inputA and inputB.
 
-    ocl->srcA = clCreateBuffer(ocl->context, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, sizeof(cl_uint) * arrayWidth * arrayHeight, inputA, &err);
+    ocl->srcA = clCreateBuffer(ocl->context, CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint) * arrayWidth * arrayHeight, inputA, &err);
     if (CL_SUCCESS != err)
     {
         LogError("Error: clCreateBuffer for srcA returned %s\n", TranslateOpenCLError(err));
         return err;
     }
 
-    ocl->srcB = clCreateBuffer(ocl->context, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, sizeof(cl_uint) * arrayWidth * arrayHeight, inputB, &err);
+    ocl->srcB = clCreateBuffer(ocl->context, CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint) * arrayWidth * arrayHeight, inputB, &err);
     if (CL_SUCCESS != err)
     {
         LogError("Error: clCreateBuffer for srcB returned %s\n", TranslateOpenCLError(err));
@@ -669,13 +669,6 @@ cl_uint SetKernelArguments(ocl_args_d_t *ocl)
     if (CL_SUCCESS != err)
     {
         LogError("error: Failed to set argument srcA, returned %s\n", TranslateOpenCLError(err));
-        return err;
-    }
-
-    err  = clSetKernelArg(ocl->kernel, 1, sizeof(cl_mem), (void *)&ocl->srcB);
-    if (CL_SUCCESS != err)
-    {
-        LogError("Error: Failed to set argument srcB, returned %s\n", TranslateOpenCLError(err));
         return err;
     }
 
@@ -768,6 +761,40 @@ bool ReadAndVerify(ocl_args_d_t *ocl, cl_uint width, cl_uint height, cl_int *inp
     return result;
 }
 
+void generateInput(cl_float3* inputArray, cl_uint array Width, cl+uint arrayHeight){
+	char * file_in = "test.jpg";
+
+	fipImage input;
+
+	if (!input.load(file_in)){
+	cout <<"error loading", << file_in<<endl;
+	system("pause");
+	exit();
+	}
+
+	FREE_IMAGETYPE origionalType = input.getimageType()
+	if (!input.convertTo24Bits()){
+		cout <<"error loading", << file_in<<endl;
+		system("pause");
+		exit(0);
+	}
+
+	pixels.resize(input.getWidth() * input.getHeight());
+	for(unsigned int i = 0; i< input.getWidth(); ++i){
+		for(unsigned int j = 0;j<input.getHeight(); ++j){
+			cl_float3 temp;
+			byte colors[4];
+			input.getPixelColor(i, j, reinterpret_cast<RGBQuad*>(colors));
+			temp.x = colors[0]
+			temp.y = colors[1]
+			temp.z = colors[2]
+
+			pixels[j * input.getWidth() + i]
+		}
+	}
+
+}
+
 
 /*
  * main execution routine
@@ -850,7 +877,7 @@ int _tmain(int argc, TCHAR* argv[])
     // because this call doesn't guarantees that kernel is finished.
     // clEnqueueNDRangeKernel is just enqueue new command in OpenCL command queue and doesn't wait until it ends.
     // clFinish waits until all commands in command queue are finished, that suits your need to measure time.
-    bool queueProfilingEnable = true;
+    bool queueProfilingEnable = false;
     if (queueProfilingEnable)
         QueryPerformanceCounter(&performanceCountNDRangeStart);
     // Execute (enqueue) the kernel
